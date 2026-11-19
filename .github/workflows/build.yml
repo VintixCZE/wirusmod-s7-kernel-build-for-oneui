@@ -1,0 +1,115 @@
+name: Build WirusMOD NetHunter - Galaxy S7 Flat G930F
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-g930-pie:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential cpio curl device-tree-compiler \
+            flex git libelf-dev libncurses-dev libssl-dev libxml2-utils \
+            lzop make python3 rsync unzip wget xz-utils zip zlib1g-dev
+
+      - name: Download WirusMOD source
+        run: |
+          git clone --depth 1 --branch aio-mkv8 \
+            https://github.com/Svirusx/EOL-Nethunter-s7-kernel-WirusMOD-AiO.git kernel
+          test -f kernel/build.sh
+          test -d kernel/build/aik
+          test -d kernel/build/ramdisk/twPie
+
+      - name: Install compatible AArch64 GCC toolchain
+        run: |
+          set -euo pipefail
+          URL="https://releases.linaro.org/components/toolchain/binaries/6.3-2017.02/aarch64-linux-gnu/gcc-linaro-6.3.1-2017.02-x86_64_aarch64-linux-gnu.tar.xz"
+          wget --tries=3 --timeout=30 "$URL" -O "$RUNNER_TEMP/gcc-linaro.tar.xz"
+          file "$RUNNER_TEMP/gcc-linaro.tar.xz"
+          tar -xJf "$RUNNER_TEMP/gcc-linaro.tar.xz" -C "$RUNNER_TEMP"
+          TOOLCHAIN_DIR="$RUNNER_TEMP/gcc-linaro-6.3.1-2017.02-x86_64_aarch64-linux-gnu"
+          test -x "$TOOLCHAIN_DIR/bin/aarch64-linux-gnu-gcc"
+          echo "TOOLCHAIN_DIR=$TOOLCHAIN_DIR" >> "$GITHUB_ENV"
+
+      - name: Add WireGuard compatibility source
+        run: |
+          set -euo pipefail
+          cd kernel
+          if [ ! -f net/wireguard/Kconfig ]; then
+            git clone --depth 1 --branch v1.0.20210606 \
+              https://git.zx2c4.com/wireguard-linux-compat "$RUNNER_TEMP/wireguard-linux-compat"
+            mkdir -p net/wireguard
+            cp -a "$RUNNER_TEMP/wireguard-linux-compat/src/." net/wireguard/
+          fi
+          test -f net/wireguard/Kconfig
+          test -f net/wireguard/Makefile
+
+      - name: Configure G930F Samsung Pie build
+        run: |
+          set -euo pipefail
+          cd kernel
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build.sh")
+          s = p.read_text()
+          old = "export BUILD_CROSS_COMPILE=/home/svirusx/ubertc-6.x/bin/aarch64-linux-android-"
+          new = 'export BUILD_CROSS_COMPILE="$TOOLCHAIN_DIR/bin/aarch64-linux-gnu-"'
+          if old not in s:
+              raise SystemExit("Expected WirusMOD compiler setting was not found; refusing to patch an unexpected build script.")
+          s = s.replace(old, new, 1)
+          marker = "# PROGRAM START"
+          if marker not in s:
+              raise SystemExit("Could not find build.sh program entry point.")
+          s = s.split(marker, 1)[0]
+          s += """
+          # CI target: Samsung Pie / Galaxy S7 Flat (SM-G930F)
+          OS=twPie
+          ANDROID=9
+          MTP=sam
+          GPU=r29
+          MODEL=G930
+          OS_DEFCONFIG=$DEFCONFIG_PIE
+          DEVICE_DEFCONFIG=$DEFCONFIG_S7FLAT
+          PERMISSIVE=yes
+          ZIP=yes
+          ZIP_NAME=Nethunter_WirusMOD-G930-twPie-r29.zip
+          MAIN
+          """
+          p.write_text(s)
+          PY
+          chmod +x build.sh
+          mkdir -p /home/svirusx
+          ln -sfn "$GITHUB_WORKSPACE/kernel" /home/svirusx/Nethunter-s7-kernel-WirusMOD-AiO
+
+      - name: Compile kernel and flashable ZIP
+        shell: bash
+        run: |
+          set -o pipefail
+          cd /home/svirusx/Nethunter-s7-kernel-WirusMOD-AiO
+          export TOOLCHAIN_DIR
+          bash ./build.sh 2>&1 | tee "$GITHUB_WORKSPACE/wirusmod-build.log"
+          ZIP="build/Nethunter_WirusMOD-G930-twPie-r29.zip"
+          if [ ! -s "$ZIP" ]; then
+            echo "Expected flashable ZIP was not produced."
+            find build -maxdepth 3 -type f -printf '%p (%s bytes)\n' || true
+            exit 1
+          fi
+          unzip -t "$ZIP"
+
+      - name: Upload flashable ZIP and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WirusMOD-G930F-Pie-NetHunter
+          path: |
+            kernel/build/Nethunter_WirusMOD-G930-twPie-r29.zip
+            wirusmod-build.log
+          if-no-files-found: warn
+          retention-days: 14
