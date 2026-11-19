@@ -1,0 +1,49 @@
+name: Import WirusMOD upstream source
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type IMPORT to copy the upstream aio-mkv8 source into this repository"
+        required: true
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    if: inputs.confirm == 'IMPORT'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone upstream WirusMOD source
+        run: |
+          git clone --depth 1 --branch aio-mkv8 \
+            https://github.com/Svirusx/EOL-Nethunter-s7-kernel-WirusMOD-AiO.git upstream
+
+      - name: Copy source files into this repository
+        run: |
+          set -euo pipefail
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            upstream/ ./
+          rm -rf upstream
+
+      - name: Commit imported source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No source changes to import."
+            exit 0
+          fi
+          git commit -m "Import WirusMOD aio-mkv8 upstream source"
+          git push
