@@ -94,7 +94,8 @@ jobs:
           p.write_text(s)
           PY
           chmod +x build.sh
-          mkdir -p /home/svirusx
+          sudo mkdir -p /home/svirusx
+          sudo chown "$(id -u):$(id -g)" /home/svirusx
           ln -sfn "$GITHUB_WORKSPACE/kernel" /home/svirusx/Nethunter-s7-kernel-WirusMOD-AiO
 
       - name: Compile kernel and flashable ZIP
