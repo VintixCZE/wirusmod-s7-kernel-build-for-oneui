@@ -1,0 +1,129 @@
+	
+<b>KERNEL INFORMATION:</b>
+
+	NAME	: <b><#selectbg_g>MoRoKernel S7</#></b>	
+	VERSION	: <b><#selectbg_g>v8.8.1</#></b>
+	DATE	: <b><#selectbg_g>18/06/2021</#></b>
+	AUTHOR	: <b><#selectbg_g>MoroGoku</#></b>
+
+	<#f00><b>ONLY FOR Galaxy S7</b></#>
+
+
+<b>CHANGELOG:</b>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.8.1</#></b></u>
+<*>F2FS support for Lineage 17 & 18</*>
+<*>DT2W support for Lineage 18</*>
+<*>Enabled ZSWAP for Oreo and Pie</*>
+<*>Trying to solve the battery problem with NoteFE</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.8</#></b></u>
+<*>NOTE FE support, for Floyd Q, and Samsung Pie roms</*>
+<*>Magisk v23.0</*>
+<*>Fixed Lineage 18.1 problems with obb folder</*>
+<*>Installer works with all recoverys</*>
+<*>TheAlexPlaYT spectrum profiles selectables</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.7</#></b></u>
+<*>Sources N935KKKU4CUA1</*>
+<*>Lineage 18.1 compatible</*>
+<*>Lineage 17 & 17.1 wifi compatible</*>
+<*>Magisk v22.1</*>
+<*>Disable Zswap, and Enable ZRAM LZ4</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.6.1</#></b></u>
+<*>Reverted SDFat updates</*>
+<*>MTweaks 2.18.1</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.6.0</#></b></u>
+<*>Sources N935KKKU4CTK1</*>
+<*>MoroSound v2.2.0</*>
+<*> - Dual Speaker</*>
+<*> - Mono sound</*>
+<*> - Mic gain controls for 3 mics</*>
+<*>MTweaks v2.18.0</*>
+<*>ZZMOOVE Cpue Governor</*>
+<*>Removed Fingerprint Always-On</*>
+<*>Interactive S7 governor for default</*>
+<*>Reverted to kernel 8.2 cpu configuration</*>
+<*>Sdfat update to version 2.4.5</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.5.2</#></b></u>
+<*>Fixed Fingerprint error and reboots with some roms</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.5.1</#></b></u>
+<*>Enabled CRYPTO_FIPS</*>
+<*>Fingerprint Always-On slectable</*>
+<*>Some changes on Aroma Installer</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.5</#></b></u>
+<*>Upgrade for Lineage 17.1 roms</*>
+<*>Lineage 17.0 no more compatible</*>
+<*>Improved temperature</*>
+<*>Updated sources to N935KKKU4CTH1</*>
+<*>Various optimizations</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.4</#></b></u>
+<*>Compatible with Floyd v3.0 OneUIv2.1</*>
+<*>Revert to Stable Magisk 20.4</*>
+<*>Spectrum support selectable</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.3</#></b></u>
+<*>Compatible with Floyd v3.0 OneUIv2.1</*>
+<*>Updated InteractiveS9 and Thunderstorm2 governors - Credits to nalas, ThunderStorms21th</*>
+<*>Added Thunderstorm governor</*>
+<*>Magisk Canary 97b72a59 (20419)</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.2</#></b></u>
+<*>Fixed NFC for OneUI 2.0 Q Rom - Credits to Anan, ananjaser1211</*>
+<*>Fixed smart covers form OneUI 2.0 Q Rom - Credits to Anan, ananjaser1211</*>
+<*>InteractiveS9 and Thunderstorm2 governors - Credits to nalas, ThunderStorms21th</*>
+<*>Enable TARGET TTL</*>
+<*>MTweaks v2.17.3</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.1</#></b></u>
+<*>F2FS for Lineage 17</*>
+<*>Spectrum support</*>
+<*>Magisk Hide 20.4 enabled</*>
+<*>Removed ArchPower</*>
+<*>Disabled some debug options</*>
+<*>GPU libs installation for Treble and Samsung Pie</*>
+<*>MTweaks v2.17.2</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.0.1</#></b></u>
+<*>Fixed F2FS</*>
+<*>Enabled fsync</*>
+<*>Fix OneUi roms detection</*>
+
+<u><b><#selectbg_g>MoRoKernel AIO v8.0</#></b></u>
+<*>All In One KERNEL, OREO, PIE, LINEAGE, and TREBLE</*>
+<*>MADE FROM SCRATCH</*>
+<*>Sources NoteFE N935KKKU4CTA4 updated to 3.18.140.8</*>
+<*>Selectable GPU Libs r22 or r28 (for PIE Roms)</*>
+<*>GPU R29 Driver</*>
+<*>UKSM 0.1.2.3</*>
+<*>AutoSMP Holplug</*>
+<*>Input Boost</*>
+<*>Fingerprint Boost</*>
+<*>4 Cores to MAX FREQ, selectable</*>
+<*>DVFS decision control</*>
+<*>MoRoSound v2.1.1, with 5 bands Equalizer</*>
+<*>Wake gestures: sweep2wake, doubletap2wake and sweep2sleep</*>
+<*>MTweaks 2.17.1</*>
+<*>A lot of CPU governors </*>
+<*>A lot of IO Shedulers</*>
+<*>GPU Freq: 250-806MHz</*>
+<*>Battery Store mode</*>
+<*>Voltage settings for CPU, GPU, Int, Mif, Dsip, Cam</*>
+<*>Battery settings</*>
+<*>USB charge to 900MHz</*>
+<*>PWMfree brightness control</*>
+<*>Magisk 20.4</*>
+<*>Powersuspend 4 modes, Autosleep, Userspace, LCD panel, Hybrid</*>
+<*>Wakelocks settings</*>
+<*>Boeffla Wakelock Settings</*>
+<*>SELinux Selectable Permissive</*>
+<*>Swap with LZ4 compression</*>
+<*>Led Settings</*>
+<*>Wireguard VPN compatible</*>
+
