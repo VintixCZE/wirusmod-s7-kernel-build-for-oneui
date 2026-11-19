@@ -37,6 +37,9 @@ jobs:
             exit 1
           fi
           test -d /tmp/wirusmod-upstream/.git
+          # Never copy the upstream Git metadata over this repository's
+          # authenticated .git directory and origin remote.
+          rm -rf /tmp/wirusmod-upstream/.git
           # Remove the old imported tree but preserve this repository's Git
           # metadata and workflow definitions.
           find . -mindepth 1 -maxdepth 1 \
