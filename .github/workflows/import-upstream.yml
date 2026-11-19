@@ -33,7 +33,7 @@ jobs:
           echo "Import workflow revision: $(git rev-parse HEAD)"
           # Guard against reintroducing the old rsync-based self-copy step.
           if grep -nE '(^|[[:space:]])rsync([[:space:]]|$)' .github/workflows/import-upstream.yml; then
-            echo "ERROR: rsync is forbidden in this import workflow."
+            echo "ERROR: forbidden transfer command found."
             exit 1
           fi
           test -d /tmp/wirusmod-upstream/.git
