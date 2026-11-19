@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Check out repository and stock XFire reference
         uses: actions/checkout@v4
+        with:
+          path: repo-config
 
       - name: Install build dependencies
         run: |
@@ -119,7 +121,7 @@ jobs:
             exit 1
           fi
           unzip -t "$ZIP"
-          python3 - "$ZIP" "$GITHUB_WORKSPACE/boot.zip" <<'PY'
+          python3 - "$ZIP" "$GITHUB_WORKSPACE/repo-config/boot.zip" <<'PY'
           import io, struct, sys, tarfile, zipfile
           package, stock_package = sys.argv[1:3]
           def find_boot(blob, depth=0):
