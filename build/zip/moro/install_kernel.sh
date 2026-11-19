@@ -89,6 +89,9 @@ ui_print "@Flashing kernel"
 cd /tmp/moro
 ui_print "-- Extracting"
 $BB tar -Jxf kernel.tar.xz $MODEL-$OS-$GPU-boot.img
+if [ ! -f /tmp/moro/$MODEL-$OS-$GPU-boot.img ]; then
+	abort "-- No kernel for $MODEL / $OS in this ZIP ($MODEL-$OS-$GPU-boot.img). Nothing was flashed."
+fi
 
 ## Spectrum support
 if [ "$(file_getprop /tmp/aroma/menu.prop chk14)" == 0 ]; then
@@ -120,7 +123,7 @@ fi
 
 # Write kernel img
 ui_print "-- Flashing kernel $MODEL-$OS-$GPU-boot.img"
-dd of=/dev/block/platform/155a0000.ufs/by-name/BOOT if=/tmp/moro/$MODEL-$OS-$GPU-boot.img
+flash_boot /tmp/moro/$MODEL-$OS-$GPU-boot.img /dev/block/platform/155a0000.ufs/by-name/BOOT
 ui_print "-- Done"
 
 

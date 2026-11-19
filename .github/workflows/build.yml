@@ -121,48 +121,23 @@ jobs:
             exit 1
           fi
           unzip -t "$ZIP"
-          python3 - "$ZIP" "$GITHUB_WORKSPACE/repo-config/boot.zip" <<'PY'
-          import io, struct, sys, tarfile, zipfile
-          package, stock_package = sys.argv[1:3]
-          def find_boot(blob, depth=0):
-              if blob.startswith(b'ANDROID!'): return blob
-              if depth >= 3: return None
-              try:
-                  with zipfile.ZipFile(io.BytesIO(blob)) as z:
-                      for item in z.infolist():
-                          if not item.is_dir():
-                              found = find_boot(z.read(item), depth + 1)
-                              if found is not None: return found
-              except (zipfile.BadZipFile, OSError): pass
-              return None
-          with zipfile.ZipFile(package) as z: kernel_archive = z.read('moro/kernel.tar.xz')
-          with tarfile.open(fileobj=io.BytesIO(kernel_archive), mode='r:xz') as t:
-              boots = [m for m in t.getmembers() if m.isfile() and m.name.endswith('-boot.img')]
-              if len(boots) != 1: raise SystemExit('Expected exactly one packaged boot image')
-              image = t.extractfile(boots[0]).read()
-          with open(stock_package, 'rb') as f: stock_image = find_boot(f.read())
-          if stock_image is None: raise SystemExit('Could not find stock XFire boot.img inside boot.zip')
-          def parse(data, label):
-              if len(data) < 48 or data[:8] != b'ANDROID!': raise SystemExit(label + ': invalid Android boot image')
-              vals = struct.unpack_from('<8I', data, 8)
-              keys = ('kernel_size','kernel_addr','ramdisk_size','ramdisk_addr','second_size','second_addr','tags_addr','page_size')
-              h = dict(zip(keys, vals))
-              if h['page_size'] != 2048: raise SystemExit(label + ': unexpected page size')
-              if h['kernel_size'] == 0 or 2048 + h['kernel_size'] > len(data): raise SystemExit(label + ': truncated kernel')
-              return h
-          built, stock = parse(image, 'built'), parse(stock_image, 'stock')
-          print('Stock XFire kernel: {:,} bytes; built kernel: {:,} bytes'.format(stock['kernel_size'], built['kernel_size']))
-          for key in ('kernel_addr','ramdisk_addr','second_addr','tags_addr','page_size'):
-              if built[key] != stock[key]: raise SystemExit('Boot header mismatch for ' + key)
-          if image[2048:2050] == bytes((0x1f,0x8b)): raise SystemExit('Built kernel is gzip-compressed; XFire expects raw Image')
-          if built['kernel_size'] > stock['kernel_size']:
-              delta = built['kernel_size'] - stock['kernel_size']
-              print('WARNING: built kernel is {:,} bytes larger than the stock XFire reference.'.format(delta))
-              print('This is a comparison baseline, not a confirmed boot-partition or bootloader limit.')
-          else:
-              print('Built kernel is within the stock XFire kernel-size reference.')
-          print('PASS: raw Image format, boot addresses, and page size verified.')
-          PY
+
+      - name: Validate boot image (BOOT partition size, layout, footer)
+        run: |
+          set -o pipefail
+          python3 "$GITHUB_WORKSPACE/repo-config/tools/validate_boot.py" \
+            --zip "kernel/build/Nethunter_WirusMOD-G930-twPie-r29.zip" \
+            --stock "$GITHUB_WORKSPACE/repo-config/boot.zip" \
+            --report "$GITHUB_WORKSPACE/boot-validation.txt"
+
+      - name: Upload boot image validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WirusMOD-G930F-boot-validation
+          path: boot-validation.txt
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Capture kernel size diagnostics
         if: always()

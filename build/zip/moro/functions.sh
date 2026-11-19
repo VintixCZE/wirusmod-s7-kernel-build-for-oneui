@@ -200,3 +200,58 @@ init_variables() {
 
 }
 
+
+
+# Size of a block device (or, for testing, a regular file) in bytes.
+# Falls back to the 40 MiB BOOT partition of the S7 family if nothing works.
+part_size() {
+    local size blk
+    if [ -f "$1" ]; then
+        wc -c < "$1"
+        return
+    fi
+    size=$(blockdev --getsize64 "$1" 2>/dev/null)
+    if [ -z "$size" ]; then
+        blk=$(readlink -f "$1" 2>/dev/null)
+        blk=${blk##*/}
+        if [ -n "$blk" ] && [ -r "/sys/class/block/$blk/size" ]; then
+            size=$(( $(cat "/sys/class/block/$blk/size") * 512 ))
+        fi
+    fi
+    echo "${size:-41943040}"
+}
+
+
+# flash_boot <boot image> <BOOT block device>
+# A bare "dd" of an image that is larger than the partition is cut off at the
+# end of the partition and S-Boot then reports "Invalid kernel length", so the
+# size is checked first and what was written is read back afterwards.
+flash_boot() {
+    local img="$1" blk="$2" img_size blk_size blocks want got
+
+    if [ ! -f "$img" ]; then
+        abort "-- $(basename "$img") is not inside kernel.tar.xz: this ZIP has no kernel for this ROM/device. Nothing was flashed."
+    fi
+
+    img_size=$(wc -c < "$img")
+    blk_size=$(part_size "$blk")
+    ui_print "-- Image: $img_size bytes, BOOT partition: $blk_size bytes"
+
+    if [ "$img_size" -gt "$blk_size" ]; then
+        abort "-- Kernel image is $(( img_size - blk_size )) bytes larger than the BOOT partition and would be truncated. Nothing was flashed."
+    fi
+
+    dd if="$img" of="$blk" bs=4096 2>/dev/null
+    sync
+
+    blocks=$(( (img_size + 4095) / 4096 ))
+    want=$(md5sum < "$img" | cut -d' ' -f1)
+    got=$(dd if="$blk" bs=4096 count="$blocks" 2>/dev/null | head -c "$img_size" | md5sum | cut -d' ' -f1)
+    if [ -z "$want" ] || [ -z "$got" ]; then
+        ui_print "-- Could not verify the written image (md5sum/head unavailable)"
+    elif [ "$want" != "$got" ]; then
+        abort "-- Verification failed: BOOT partition does not match the kernel image. Do NOT reboot; flash again."
+    else
+        ui_print "-- Verified: BOOT partition matches the kernel image"
+    fi
+}
