@@ -1,6 +1,9 @@
 name: Build WirusMOD NetHunter - Galaxy S7 Flat G930F
 
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/build.yml']
   workflow_dispatch:
 
 permissions:
@@ -154,7 +157,7 @@ jobs:
               delta = built['kernel_size'] - stock['kernel_size']
               raise SystemExit('Built kernel exceeds known-working stock baseline by {:,} bytes; refusing to publish'.format(delta))
           print('PASS: raw Image format, boot addresses, page size, and stock kernel-size baseline verified.')
-          PYPY
+          PY
 
       - name: Upload validated flashable ZIP
         if: success()
