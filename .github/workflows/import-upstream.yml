@@ -24,31 +24,18 @@ jobs:
       - name: Clone upstream WirusMOD source
         run: |
           git clone --depth 1 --branch aio-mkv8 \
-            https://github.com/Svirusx/EOL-Nethunter-s7-kernel-WirusMOD-AiO.git upstream
+            https://github.com/Svirusx/EOL-Nethunter-s7-kernel-WirusMOD-AiO.git /tmp/wirusmod-upstream
 
       - name: Copy source files into this repository
         run: |
           set -euo pipefail
-          # Retry once if rsync reports files disappearing during the copy.
-          for attempt in 1 2 3; do
-            set +e
-            rsync -a --delete \
-              --exclude='.git/' \
-              --exclude='.github/' \
-              upstream/ ./
-            rsync_status=$?
-            set -e
-
-            if [ "$rsync_status" -eq 0 ]; then
-              break
-            elif [ "$rsync_status" -eq 24 ] && [ "$attempt" -lt 3 ]; then
-              echo "Some source files vanished during copy; retrying (attempt $((attempt + 1))/3)."
-              continue
-            else
-              exit "$rsync_status"
-            fi
-          done
-          rm -rf upstream
+          # Keep the source outside the destination tree: rsync --delete must
+          # never delete the directory it is currently reading from.
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            /tmp/wirusmod-upstream/ ./
+          rm -rf /tmp/wirusmod-upstream
 
       - name: Commit imported source
         run: |
