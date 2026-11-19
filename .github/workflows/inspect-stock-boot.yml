@@ -1,0 +1,85 @@
+name: Inspect stock XFire boot image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-stock-boot.yml'
+      - 'boot.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect boot.zip and boot image header
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import zipfile, io, struct, hashlib, os, sys
+          outer = "boot.zip"
+          if not os.path.isfile(outer):
+              raise SystemExit("ERROR: boot.zip not found in repository root")
+          print("OUTER ZIP:", outer, "bytes:", os.path.getsize(outer))
+          def inspect_blob(name, data, depth=0):
+              if data.startswith(b"ANDROID!"):
+                  print("\nBOOT IMAGE:", name)
+                  print("FILE_BYTES:", len(data))
+                  print("SHA256:", hashlib.sha256(data).hexdigest())
+                  if len(data) < 44:
+                      print("ERROR: truncated Android boot header")
+                      return
+                  fields = struct.unpack_from("<10I", data, 8)
+                  names = ["kernel_size","kernel_addr","ramdisk_size","ramdisk_addr",
+                           "second_size","second_addr","tags_addr","page_size",
+                           "header_version","os_version"]
+                  for k,v in zip(names, fields):
+                      print(f"{k}: 0x{v:08x} ({v})")
+                  page = fields[7]
+                  if page and page & (page-1) == 0:
+                      kernel_off = page
+                      ramdisk_off = kernel_off + ((fields[0]+page-1)//page)*page
+                      second_off = ramdisk_off + ((fields[2]+page-1)//page)*page
+                      print("computed_kernel_offset:", kernel_off)
+                      print("computed_ramdisk_offset:", ramdisk_off)
+                      print("computed_second_offset:", second_off)
+                      print("kernel_payload_magic:", data[kernel_off:kernel_off+8].hex())
+                      print("ramdisk_payload_magic:", data[ramdisk_off:ramdisk_off+8].hex())
+                      if ramdisk_off + fields[2] > len(data):
+                          print("ERROR: ramdisk extends beyond file")
+                      if kernel_off + fields[0] > len(data):
+                          print("ERROR: kernel extends beyond file")
+                  return True
+              if depth > 3:
+                  return False
+              try:
+                  z = zipfile.ZipFile(io.BytesIO(data))
+              except Exception:
+                  return False
+              found = False
+              for info in z.infolist():
+                  if info.is_dir():
+                      continue
+                  blob = z.read(info)
+                  lname = info.filename.lower()
+                  if blob.startswith(b"ANDROID!") or lname.endswith((".img",".bin")) or lname.endswith("boot.img"):
+                      found = inspect_blob(info.filename, blob, depth+1) or found
+              return found
+          with zipfile.ZipFile(outer) as z:
+              print("OUTER_CONTENTS:")
+              for i in z.infolist():
+                  print(i.filename, i.file_size)
+              candidates = [i for i in z.infolist() if not i.is_dir()]
+              found = False
+              for i in candidates:
+                  blob = z.read(i)
+                  if blob.startswith(b"ANDROID!") or i.filename.lower().endswith((".zip",".img",".tar",".md5")):
+                      found = inspect_blob(i.filename, blob, 1) or found
+              if not found:
+                  print("\nNo Android boot image found by recursive ZIP scan.")
+                  raise SystemExit(2)
+          PY
