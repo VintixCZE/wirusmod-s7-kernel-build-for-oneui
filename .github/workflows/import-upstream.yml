@@ -30,6 +30,12 @@ jobs:
       - name: Replace imported source safely
         run: |
           set -euo pipefail
+          echo "Import workflow revision: $(git rev-parse HEAD)"
+          # Guard against reintroducing the old rsync-based self-copy step.
+          if grep -nE '(^|[[:space:]])rsync([[:space:]]|$)' .github/workflows/import-upstream.yml; then
+            echo "ERROR: rsync is forbidden in this import workflow."
+            exit 1
+          fi
           test -d /tmp/wirusmod-upstream/.git
           # Remove the old imported tree but preserve this repository's Git
           # metadata and workflow definitions.
