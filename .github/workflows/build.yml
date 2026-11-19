@@ -30,12 +30,21 @@ jobs:
       - name: Install compatible AArch64 GCC toolchain
         run: |
           set -euo pipefail
-          URL="https://releases.linaro.org/components/toolchain/binaries/6.3-2017.02/aarch64-linux-gnu/gcc-linaro-6.3.1-2017.02-x86_64_aarch64-linux-gnu.tar.xz"
-          wget --tries=3 --timeout=30 "$URL" -O "$RUNNER_TEMP/gcc-linaro.tar.xz"
-          file "$RUNNER_TEMP/gcc-linaro.tar.xz"
-          tar -xJf "$RUNNER_TEMP/gcc-linaro.tar.xz" -C "$RUNNER_TEMP"
-          TOOLCHAIN_DIR="$RUNNER_TEMP/gcc-linaro-6.3.1-2017.02-x86_64_aarch64-linux-gnu"
+          # The original Linaro releases URL now redirects to an HTML contact page.
+          # Use the archived Linaro 6.4.1 AArch64 Linux toolchain mirror instead.
+          URL="https://mirror-us-stl1.armbian.airframes.io/dl/_toolchain/gcc-linaro-6.4.1-2017.11-x86_64_aarch64-linux-gnu.tar.xz"
+          ARCHIVE="$RUNNER_TEMP/gcc-linaro.tar.xz"
+          wget --tries=3 --timeout=60 --https-only "$URL" -O "$ARCHIVE"
+          if ! xz -t "$ARCHIVE"; then
+            echo "Downloaded toolchain is not a valid XZ archive; refusing to extract it."
+            file "$ARCHIVE" || true
+            exit 1
+          fi
+          tar -tJf "$ARCHIVE" >/dev/null
+          tar -xJf "$ARCHIVE" -C "$RUNNER_TEMP"
+          TOOLCHAIN_DIR="$RUNNER_TEMP/gcc-linaro-6.4.1-2017.11-x86_64_aarch64-linux-gnu"
           test -x "$TOOLCHAIN_DIR/bin/aarch64-linux-gnu-gcc"
+          "$TOOLCHAIN_DIR/bin/aarch64-linux-gnu-gcc" --version | head -n 1
           echo "TOOLCHAIN_DIR=$TOOLCHAIN_DIR" >> "$GITHUB_ENV"
 
       - name: Add WireGuard compatibility source
