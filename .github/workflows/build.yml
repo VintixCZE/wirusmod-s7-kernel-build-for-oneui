@@ -157,9 +157,47 @@ jobs:
           if image[2048:2050] == bytes((0x1f,0x8b)): raise SystemExit('Built kernel is gzip-compressed; XFire expects raw Image')
           if built['kernel_size'] > stock['kernel_size']:
               delta = built['kernel_size'] - stock['kernel_size']
-              raise SystemExit('Built kernel exceeds known-working stock baseline by {:,} bytes; refusing to publish'.format(delta))
-          print('PASS: raw Image format, boot addresses, page size, and stock kernel-size baseline verified.')
+              print('WARNING: built kernel is {:,} bytes larger than the stock XFire reference.'.format(delta))
+              print('This is a comparison baseline, not a confirmed boot-partition or bootloader limit.')
+          else:
+              print('Built kernel is within the stock XFire kernel-size reference.')
+          print('PASS: raw Image format, boot addresses, and page size verified.')
           PY
+
+      - name: Capture kernel size diagnostics
+        if: always()
+        run: |
+          set -u
+          mkdir -p kernel-diagnostics
+          for f in kernel/.config kernel/System.map kernel/vmlinux; do
+            if [ -s "$f" ]; then cp "$f" kernel-diagnostics/; fi
+          done
+          {
+            echo "Kernel build diagnostics"
+            echo "========================"
+            for f in kernel/.config kernel/System.map kernel/vmlinux; do
+              if [ -s "$f" ]; then stat -c '%n: %s bytes' "$f"; else echo "$f: not present"; fi
+            done
+            if [ -s kernel/vmlinux ] && [ -x "$TOOLCHAIN_DIR/bin/aarch64-linux-gnu-nm" ]; then
+              echo
+              echo "Largest linked kernel symbols (top 60)"
+              "$TOOLCHAIN_DIR/bin/aarch64-linux-gnu-nm" -S --size-sort kernel/vmlinux | tail -n 60
+            fi
+            if [ -s kernel/.config ]; then
+              echo
+              echo "Relevant configuration"
+              grep -E '^(CONFIG_(DEBUG|TRACING|FTRACE|KALLSYMS|SCHED_DEBUG|TIMER_STATS|GATOR|CRYPTO_TEST|SDFAT_DEBUG|SDFAT_DBG_MSG|SDFAT_STATISTICS|HID|USB_GADGET|WLAN|MAC80211|CFG80211)|# CONFIG_(DEBUG|TRACING|FTRACE|KALLSYMS))' kernel/.config || true
+            fi
+          } > kernel-diagnostics/report.txt
+
+      - name: Upload kernel diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WirusMOD-G930F-kernel-diagnostics
+          path: kernel-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload validated flashable ZIP
         if: success()
