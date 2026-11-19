@@ -23,19 +23,24 @@ jobs:
 
       - name: Clone upstream WirusMOD source
         run: |
+          set -euo pipefail
           git clone --depth 1 --branch aio-mkv8 \
             https://github.com/Svirusx/EOL-Nethunter-s7-kernel-WirusMOD-AiO.git /tmp/wirusmod-upstream
 
-      - name: Copy source files into this repository
+      - name: Replace imported source safely
         run: |
           set -euo pipefail
-          # Keep the source outside the destination tree: rsync --delete must
-          # never delete the directory it is currently reading from.
-          rsync -a --delete \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            /tmp/wirusmod-upstream/ ./
+          test -d /tmp/wirusmod-upstream/.git
+          # Remove the old imported tree but preserve this repository's Git
+          # metadata and workflow definitions.
+          find . -mindepth 1 -maxdepth 1 \
+            ! -name '.git' ! -name '.github' \
+            -exec rm -rf -- {} +
+          # Copy from outside the workspace. cp does not scan/delete its own
+          # source tree, so it cannot produce rsync's "file has vanished" 24.
+          cp -a /tmp/wirusmod-upstream/. .
           rm -rf /tmp/wirusmod-upstream
+          test -f build.sh
 
       - name: Commit imported source
         run: |
