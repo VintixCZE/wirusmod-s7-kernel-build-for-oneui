@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       trim_level:
-        description: 'Kernel config trim level (0 = none, 1-3 = ci/trim-N.config, cumulative)'
-        default: '3'
+        description: 'Kernel config trim level (0 = none, 1-4 = ci/trim-N.config, cumulative)'
+        default: '4'
       kernel_limit_mib:
         description: 'Fail if the kernel is larger than this many MiB (0 = report only)'
         default: '32'
@@ -116,12 +116,12 @@ jobs:
 
       - name: Trim kernel config
         env:
-          TRIM_LEVEL: ${{ inputs.trim_level || '3' }}
+          TRIM_LEVEL: ${{ inputs.trim_level || '4' }}
         run: |
           set -euo pipefail
           cfg="kernel/arch/arm64/configs/moro-flat_defconfig"   # merged last by build.sh, so it wins
           test -f "$cfg"
-          for n in 1 2 3; do
+          for n in 1 2 3 4; do
             if [ "$n" -le "$TRIM_LEVEL" ]; then
               echo "Applying ci/trim-$n.config"
               { echo; grep -E '^# CONFIG_[A-Za-z0-9_]+ is not set$' "repo-config/ci/trim-$n.config"; } >> "$cfg"
