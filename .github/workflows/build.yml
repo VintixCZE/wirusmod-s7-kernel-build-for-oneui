@@ -159,6 +159,12 @@ jobs:
           patch("drivers/soc/samsung/exynos-hotplug_governor.c",
                 "#include <linux/sched.h>\n",
                 "#include <linux/sched.h>\n#include <linux/irq_work.h>\n")
+
+          # thermal_core.c uses CPU_ONLINE / register_hotcpu_notifier without including
+          # <linux/cpu.h>; the tracing headers used to pull it in.
+          patch("drivers/thermal/thermal_core.c",
+                "#include <linux/thermal.h>\n",
+                "#include <linux/thermal.h>\n#include <linux/cpu.h>\n")
           PY
 
       - name: Compile kernel and flashable ZIP
@@ -167,6 +173,8 @@ jobs:
           set -o pipefail
           cd /home/svirusx/Nethunter-s7-kernel-WirusMOD-AiO
           export TOOLCHAIN_DIR
+          # -k: keep going after a failed file so one run reports every compile error
+          export MAKEFLAGS="${MAKEFLAGS:-} -k"
           bash ./build.sh 2>&1 | tee "$GITHUB_WORKSPACE/wirusmod-build.log"
           ZIP="build/Nethunter_WirusMOD-G930-twPie-r29.zip"
           if [ ! -s "$ZIP" ]; then
