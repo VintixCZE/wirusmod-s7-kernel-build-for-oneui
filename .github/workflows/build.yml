@@ -5,6 +5,13 @@ on:
     branches: [main]
     paths: ['.github/workflows/build.yml']
   workflow_dispatch:
+    inputs:
+      trim_level:
+        description: 'Kernel config trim level (0 = none, 1-3 = ci/trim-N.config, cumulative)'
+        default: '3'
+      kernel_limit_mib:
+        description: 'Fail if the kernel is larger than this many MiB (0 = report only)'
+        default: '32'
 
 permissions:
   contents: read
@@ -107,6 +114,21 @@ jobs:
           sudo chown "$(id -u):$(id -g)" /home/svirusx
           ln -sfn "$GITHUB_WORKSPACE/kernel" /home/svirusx/Nethunter-s7-kernel-WirusMOD-AiO
 
+      - name: Trim kernel config
+        env:
+          TRIM_LEVEL: ${{ inputs.trim_level || '3' }}
+        run: |
+          set -euo pipefail
+          cfg="kernel/arch/arm64/configs/moro-flat_defconfig"   # merged last by build.sh, so it wins
+          test -f "$cfg"
+          for n in 1 2 3; do
+            if [ "$n" -le "$TRIM_LEVEL" ]; then
+              echo "Applying ci/trim-$n.config"
+              { echo; grep -E '^# CONFIG_[A-Za-z0-9_]+ is not set$' "repo-config/ci/trim-$n.config"; } >> "$cfg"
+            fi
+          done
+          echo "Trim level: $TRIM_LEVEL"
+
       - name: Compile kernel and flashable ZIP
         shell: bash
         run: |
@@ -128,6 +150,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/repo-config/tools/validate_boot.py" \
             --zip "kernel/build/Nethunter_WirusMOD-G930-twPie-r29.zip" \
             --stock "$GITHUB_WORKSPACE/repo-config/boot.zip" \
+            --kernel-limit-mib "${{ inputs.kernel_limit_mib || '32' }}" \
             --report "$GITHUB_WORKSPACE/boot-validation.txt"
 
       - name: Upload boot image validation report

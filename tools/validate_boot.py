@@ -8,6 +8,7 @@ Usage:
 Hard failures (exit 1) are things that make S-Boot reject the image or that
 make a flash silently truncate it:
   * image larger than the BOOT partition (40 MiB on hero/hero2 devices)
+  * kernel larger than 32 MiB (suspected S-Boot limit, see KERNEL_LIMIT)
   * header / payload layout that does not fit inside the file
   * kernel is not a raw arm64 Image, ramdisk is not a valid gzip cpio,
     DTB image is not a dtbTool ("DTBH") container
@@ -30,6 +31,11 @@ import zipfile
 # BOARD_BOOTIMAGE_PARTITION_SIZE of LineageOS device/samsung/hero-common
 # (board/fs.mk): 41943040 = 40 MiB.  S7 / S7 Edge share this layout.
 BOOT_PARTITION_SIZE = 41943040
+# Suspected S-Boot limit on the kernel payload.  Evidence, not proof: the only
+# known-good kernel (stock XFire, 33,374,744 bytes) sits 179,688 bytes below
+# 32 MiB, while the CI build that failed with "Invalid kernel length" had a
+# 35,605,288 byte kernel (its whole image still fit the 40 MiB partition).
+KERNEL_LIMIT = 32 * 1024 * 1024
 PAGE = 2048
 FOOTER = b"SEANDROIDENFORCE"
 
@@ -141,11 +147,14 @@ def main():
     src.add_argument("--img", help="boot.img to check directly")
     ap.add_argument("--stock", required=True, help="stock reference boot.zip (or boot.img)")
     ap.add_argument("--report", help="write the text report to this file")
+    ap.add_argument("--kernel-limit-mib", type=float, default=KERNEL_LIMIT / 1048576,
+                    help="fail if the kernel is larger than this many MiB (default 32, 0 = report only)")
     ap.add_argument("--summary", default=os.environ.get("GITHUB_STEP_SUMMARY"),
                     help="markdown file to append a table to (defaults to $GITHUB_STEP_SUMMARY)")
     args = ap.parse_args()
 
     problems, warnings = [], []
+    kernel_limit = int(args.kernel_limit_mib * 1048576)
 
     if args.zip:
         name, image = boot_from_flashable(args.zip)
@@ -174,7 +183,14 @@ def main():
                 "boot image is %d bytes, %d bytes larger than the %d byte (40 MiB) BOOT partition. "
                 "dd/Odin would truncate it and S-Boot reports 'Invalid kernel length'."
                 % (b["total"], b["total"] - BOOT_PARTITION_SIZE, BOOT_PARTITION_SIZE))
-        if b["kernel_size"] > s["kernel_size"]:
+        if kernel_limit and b["kernel_size"] > kernel_limit:
+            problems.append(
+                "kernel is %d bytes, %d bytes above the %d byte limit. The known-good stock kernel is %d bytes "
+                "(%d below 32 MiB); kernels above 32 MiB are suspected to be rejected by S-Boot with "
+                "'Invalid kernel length'. Shrink the kernel (see ci/trim-*.config)."
+                % (b["kernel_size"], b["kernel_size"] - kernel_limit, kernel_limit, s["kernel_size"],
+                   KERNEL_LIMIT - s["kernel_size"]))
+        elif b["kernel_size"] > s["kernel_size"]:
             warnings.append(
                 "kernel is %d bytes, %d bytes larger than the stock reference kernel (%d). The stock kernel "
                 "is a known-good size, not a proven limit; if the device rejects the image, shrink the kernel."
@@ -192,12 +208,12 @@ def main():
     if b is not None and s is not None:
         rows = [
             ("boot.img total", b["total"], s["total"], BOOT_PARTITION_SIZE),
-            ("kernel_size", b["kernel_size"], s["kernel_size"], None),
+            ("kernel_size", b["kernel_size"], s["kernel_size"], kernel_limit or None),
             ("Image image_size (incl. bss)", b.get("image_size"), s.get("image_size"), None),
             ("ramdisk_size", b["ramdisk_size"], s["ramdisk_size"], None),
             ("dt_size", b["dt_size"], s["dt_size"], None),
         ]
-        lines.append("%-30s %14s %14s %16s" % ("", "built", "stock", "BOOT partition"))
+        lines.append("%-30s %14s %14s %16s" % ("", "built", "stock", "limit"))
         for label, bv, sv, limit in rows:
             lines.append("%-30s %14s %14s %16s" % (label, bv if bv is not None else "-",
                                                     sv if sv is not None else "-",
