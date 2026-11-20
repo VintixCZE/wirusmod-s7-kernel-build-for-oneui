@@ -129,6 +129,38 @@ jobs:
           done
           echo "Trim level: $TRIM_LEVEL"
 
+      - name: Patch Samsung sources for the trimmed config
+        run: |
+          set -euo pipefail
+          cd kernel
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def patch(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              if s.count(old) != 1:
+                  raise SystemExit("Source patch does not match %s; refusing to guess." % path)
+              p.write_text(s.replace(old, new, 1))
+
+          # ion.c prints thread_comm/tid outside the ION_EXYNOS_STAT_LOG guard, so the
+          # fields must exist when the stat log is off (they stay zeroed: kzalloc).
+          patch("drivers/staging/android/ion/ion_priv.h",
+                "#ifdef CONFIG_ION_EXYNOS_STAT_LOG\n\tstruct list_head master_list;\n"
+                "\tchar thread_comm[TASK_COMM_LEN];\n\tpid_t tid;\n#endif\n",
+                "#ifdef CONFIG_ION_EXYNOS_STAT_LOG\n\tstruct list_head master_list;\n#endif\n"
+                "\tchar thread_comm[TASK_COMM_LEN];\n\tpid_t tid;\n")
+
+          # The hotplug governor uses irq_work but relied on the tracing ring buffer
+          # to select IRQ_WORK and to pull in its header.
+          patch("drivers/soc/samsung/Kconfig",
+                'config EXYNOS_HOTPLUG_GOVERNOR\n\tbool "Enable Exynos dynamic hotplug governor"\n',
+                'config EXYNOS_HOTPLUG_GOVERNOR\n\tbool "Enable Exynos dynamic hotplug governor"\n\tselect IRQ_WORK\n')
+          patch("drivers/soc/samsung/exynos-hotplug_governor.c",
+                "#include <linux/sched.h>\n",
+                "#include <linux/sched.h>\n#include <linux/irq_work.h>\n")
+          PY
+
       - name: Compile kernel and flashable ZIP
         shell: bash
         run: |
