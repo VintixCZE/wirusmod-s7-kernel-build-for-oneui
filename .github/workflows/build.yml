@@ -165,6 +165,11 @@ jobs:
           patch("drivers/thermal/thermal_core.c",
                 "#include <linux/thermal.h>\n",
                 "#include <linux/thermal.h>\n#include <linux/cpu.h>\n")
+
+          # decon_core.c writes systrace markers with trace_puts(), which needs CONFIG_TRACING.
+          patch("drivers/video/fbdev/exynos/decon_8890/decon_core.c",
+                "\n\ttrace_puts(buf);\n}",
+                "\n#ifdef CONFIG_TRACING\n\ttrace_puts(buf);\n#endif\n}")
           PY
 
       - name: Compile kernel and flashable ZIP
