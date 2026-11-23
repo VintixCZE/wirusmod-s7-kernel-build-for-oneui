@@ -207,6 +207,22 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Collect kernel modules
+        if: always()
+        run: |
+          mkdir -p modules-out
+          find kernel/build -name '*.ko' -exec cp -f {} modules-out/ \;
+          ls -la modules-out
+
+      - name: Upload kernel modules (load with insmod)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WirusMOD-G930F-modules
+          path: modules-out
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Capture kernel size diagnostics
         if: always()
         run: |
