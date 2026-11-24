@@ -13,6 +13,7 @@ fi
 
 # Load functions
 . /tmp/moro/functions.sh
+ui_print "Installer build: $(cat /tmp/moro/BUILD_ID 2>/dev/null || echo unknown)"
 
 
 #======================================

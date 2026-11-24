@@ -172,6 +172,18 @@ jobs:
                 "\n#ifdef CONFIG_TRACING\n\ttrace_puts(buf);\n#endif\n}")
           PY
 
+      - name: Use the fixed installer scripts and stamp the build
+        run: |
+          set -euo pipefail
+          # The kernel tree above is cloned from upstream, so the repo's own installer
+          # scripts must be copied over it or they never reach the flashable ZIP.
+          for f in functions.sh install_kernel.sh moro_clean.sh; do
+            cp "repo-config/build/zip/moro/$f" "kernel/build/zip/moro/$f"
+          done
+          grep -q untar_xz kernel/build/zip/moro/install_kernel.sh
+          grep -q flash_boot kernel/build/zip/moro/install_kernel.sh
+          echo "commit ${GITHUB_SHA::7} run ${GITHUB_RUN_ID}" > kernel/build/zip/moro/BUILD_ID
+
       - name: Compile kernel and flashable ZIP
         shell: bash
         run: |
@@ -192,6 +204,12 @@ jobs:
       - name: Validate boot image (BOOT partition size, layout, footer)
         run: |
           set -o pipefail
+          ZIPFILE="kernel/build/Nethunter_WirusMOD-G930-twPie-r29.zip"
+          for needle in untar_xz flash_boot; do
+            unzip -p "$ZIPFILE" moro/install_kernel.sh moro/functions.sh | grep -q "$needle" \
+              || { echo "FAIL: flashable ZIP does not contain the fixed installer ($needle missing)"; exit 1; }
+          done
+          unzip -p "$ZIPFILE" moro/BUILD_ID
           python3 "$GITHUB_WORKSPACE/repo-config/tools/validate_boot.py" \
             --zip "kernel/build/Nethunter_WirusMOD-G930-twPie-r29.zip" \
             --stock "$GITHUB_WORKSPACE/repo-config/boot.zip" \
