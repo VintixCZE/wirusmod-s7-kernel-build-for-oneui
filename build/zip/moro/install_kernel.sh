@@ -40,9 +40,9 @@ ui_print "@Patching system and vendor libs"
 
 cd /tmp/moro
 ui_print "-- Extracting"
-$BB tar -Jxf gpu_libs.tar.xz
-$BB tar -Jxf secure_storage.tar.xz
-$BB tar -Jxf aik.tar.xz
+if ! { untar_xz gpu_libs.tar.xz && untar_xz secure_storage.tar.xz && untar_xz aik.tar.xz; }; then
+	abort "-- Could not unpack the installer files: this recovery has no working tar/xz. Nothing was changed."
+fi
 ui_print "-- Copying files"
 
 
@@ -88,7 +88,7 @@ ui_print "@Flashing kernel"
 
 cd /tmp/moro
 ui_print "-- Extracting"
-$BB tar -Jxf kernel.tar.xz $MODEL-$OS-$GPU-boot.img
+untar_xz kernel.tar.xz $MODEL-$OS-$GPU-boot.img
 if [ ! -f /tmp/moro/$MODEL-$OS-$GPU-boot.img ]; then
 	abort "-- No kernel for $MODEL / $OS in this ZIP ($MODEL-$OS-$GPU-boot.img). Nothing was flashed."
 fi

@@ -172,7 +172,7 @@ unmount_parts() {
 
 
 init_variables() {
-    BB=/sbin/busybox
+    BB=$(find_bb)
     SDK="$(file_getprop ${SYSTEM_MOUNT}/build.prop ro.build.version.sdk)"
     TREBLE="$(file_getprop ${SYSTEM_MOUNT}/build.prop ro.treble.enabled)"
     BL=`getprop ro.bootloader`
@@ -254,4 +254,39 @@ flash_boot() {
     else
         ui_print "-- Verified: BOOT partition matches the kernel image"
     fi
+}
+
+
+# Path of a working busybox, or empty. An empty BB is intentional: "$BB tar ..."
+# then simply runs the recovery's own tar. A hardcoded /sbin/busybox does not
+# exist in recoveries that ship toybox, and every extraction then failed.
+find_bb() {
+    local b
+    for b in /sbin/busybox /system/bin/busybox /system/xbin/busybox /tmp/busybox \
+             /sbin/.magisk/busybox/busybox /data/adb/magisk/busybox; do
+        if [ -x "$b" ]; then
+            echo "$b"
+            return
+        fi
+    done
+    echo ""
+}
+
+
+# untar_xz <archive.tar.xz> [member...]
+# Tries busybox/recovery tar -J first, then xz piped into tar.
+untar_xz() {
+    local a="$1"
+    shift
+    $BB tar -Jxf "$a" "$@" 2>/dev/null && return 0
+    if command -v xz >/dev/null 2>&1; then
+        xz -dc "$a" | tar -x "$@" 2>/dev/null && return 0
+    fi
+    if command -v xzcat >/dev/null 2>&1; then
+        xzcat "$a" | tar -x "$@" 2>/dev/null && return 0
+    fi
+    if command -v unxz >/dev/null 2>&1; then
+        unxz -c "$a" | tar -x "$@" 2>/dev/null && return 0
+    fi
+    return 1
 }

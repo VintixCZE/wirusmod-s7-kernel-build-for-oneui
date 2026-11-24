@@ -35,7 +35,7 @@
 
 
 # Busybox 
-BB=/sbin/busybox;
+BB=""; for b in /sbin/busybox /system/bin/busybox /system/xbin/busybox /tmp/busybox; do [ -x "$b" ] && BB="$b" && break; done;
 
 
 run_script(){
